@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Timetable Generator</title>
+  <style>
+    :root {
+      --primary: #00b3ff; /* Ferrari Red */
+      --primary-dark: #34c9f38e;
+      --light-bg: rgba(255, 255, 255, 0.05);
+      --white: #fff;
+      --gray: #f9f9f9;
+      --text-dark: #222;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, var(--primary), #006aa7);
+      color: var(--white);
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding: 40px;
+      box-sizing: border-box;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 2.5em;
+      margin-bottom: 20px;
+      animation: fadeIn 1s ease-in-out;
+    }
+
+    .container {
+      background: var(--light-bg);
+      border-radius: 12px;
+      padding: 30px;
+      width: 100%;
+      max-width: 700px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(6px);
+      animation: slideUp 1s ease-in-out;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border: none;
+      border-radius: 6px;
+      font-size: 1em;
+      color: var(--text-dark);
+    }
+
+    input:focus {
+      outline: none;
+      background-color: #fff;
+    }
+
+    button {
+      padding: 10px 20px;
+      margin: 10px 0;
+      background-color: var(--primary);
+      border: none;
+      color: white;
+      border-radius: 6px;
+      font-size: 1em;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    button:hover {
+      background-color: var(--primary-dark);
+    }
+
+    #auth, #main {
+      display: none;
+    }
+
+    #auth.show, #main.show {
+      display: block;
+    }
+
+    .section {
+      margin-bottom: 25px;
+    }
+
+    #timetable {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .entry {
+      background-color: rgba(255, 255, 255, 0.1);
+      padding: 15px;
+      border-radius: 8px;
+      color: white;
+      border-left: 5px solid var(--primary);
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.3s ease, background-color 0.3s ease;
+    }
+
+    .entry:hover {
+      transform: translateY(-3px);
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .entry strong {
+      color: #ffe6e6;
+    }
+
+    .entry button {
+      margin-top: 10px;
+      width: 100px;
+      align-self: flex-end;
+      background-color: #ff4c4c;
+    }
+
+    @keyframes slideUp {
+      0% {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeIn {
+      0% {
+        opacity: 0;
+      }
+      100% {
+        opacity: 1;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: 20px;
+      }
+      .entry button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📅 Timetable Generator</h1>
+
+    <div id="auth" class="show">
+      <div class="section">
+        <h2>Register</h2>
+        <input id="reg-username" placeholder="Username">
+        <input id="reg-password" type="password" placeholder="Password">
+        <button onclick="register()">Register</button>
+      </div>
+
+      <div class="section">
+        <h2>Login</h2>
+        <input id="login-username" placeholder="Username">
+        <input id="login-password" type="password" placeholder="Password">
+        <button onclick="login()">Login</button>
+      </div>
+    </div>
+
+    <div id="main">
+      <div class="section">
+        <h2>Add Timetable Entry</h2>
+        <input id="teacher" placeholder="Teacher">
+        <input id="subject" placeholder="Subject">
+        <input id="division" placeholder="Division">
+        <input id="start" type="time">
+        <input id="end" type="time">
+        <input id="day" placeholder="Day (e.g., Monday)">
+        <button onclick="addTimetable()">Add</button>
+      </div>
+
+      <div class="section">
+        <h2>Your Timetable</h2>
+        <div id="timetable"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let token = '';
+
+    async function register() {
+      const username = document.getElementById('reg-username').value;
+      const password = document.getElementById('reg-password').value;
+      await fetch('/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      alert('Registered! Now login.');
+    }
+
+    async function login() {
+      const username = document.getElementById('login-username').value;
+      const password = document.getElementById('login-password').value;
+      const res = await fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      token = data.token;
+      document.getElementById('auth').classList.remove('show');
+      document.getElementById('main').classList.add('show');
+      loadTimetable();
+    }
+
+    async function addTimetable() {
+      const teacher = document.getElementById('teacher').value;
+      const subject = document.getElementById('subject').value;
+      const division = document.getElementById('division').value;
+      const startTime = document.getElementById('start').value;
+      const endTime = document.getElementById('end').value;
+      const day = document.getElementById('day').value;
+
+      const res = await fetch('/timetable', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ teacher, subject, division, startTime, endTime, day })
+      });
+
+      const text = await res.text();
+      if (res.status !== 200) {
+        alert('Conflict: ' + text);
+      }
+
+      loadTimetable();
+    }
+
+    async function loadTimetable() {
+      const res = await fetch('/timetable', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      const div = document.getElementById('timetable');
+      div.innerHTML = '';
+      data.forEach(e => {
+        div.innerHTML += `
+          <div class="entry">
+            <div><strong>${e.day}</strong>: ${e.startTime} - ${e.endTime}</div>
+            <div><strong>Teacher:</strong> ${e.teacher}</div>
+            <div><strong>Subject:</strong> ${e.subject}</div>
+            <div><strong>Division:</strong> ${e.division}</div>
+            <button onclick="del('${e._id}')">Delete</button>
+          </div>`;
+      });
+    }
+
+    async function del(id) {
+      await fetch(`/timetable/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      loadTimetable();
+    }
+  </script>
+</body>
+</html>
